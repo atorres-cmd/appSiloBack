@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualización Transelevadores TLV1 y TLV2</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+        }
+        .tab {
+            padding: 10px 20px;
+            background-color: #ddd;
+            cursor: pointer;
+            border-radius: 5px 5px 0 0;
+            margin-right: 5px;
+        }
+        .tab.active {
+            background-color: #0066cc;
+            color: white;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .card {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        h2 {
+            color: #0066cc;
+            margin-top: 0;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        .status {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .active {
+            background-color: #4CAF50;
+            color: white;
+        }
+        .inactive {
+            background-color: #9e9e9e;
+            color: white;
+        }
+        .error {
+            background-color: #f44336;
+            color: white;
+        }
+        .moving {
+            background-color: #2196F3;
+            color: white;
+        }
+        .grid-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .label {
+            font-weight: bold;
+            color: #555;
+        }
+        .value {
+            color: #333;
+        }
+        .order-info {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f0f7ff;
+            border-radius: 4px;
+            border-left: 4px solid #0066cc;
+        }
+        .log-container {
+            height: 200px;
+            overflow-y: auto;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .log-entry {
+            margin-bottom: 5px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #eee;
+        }
+        .timestamp {
+            color: #999;
+            margin-right: 10px;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 8px 16px;
+            background-color: #0066cc;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0055aa;
+        }
+        .nav-buttons {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .nav-button {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #0066cc;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: bold;
+            margin: 0 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Visualización Transelevadores</h1>
+    
+    <div class="nav-buttons">
+        <a href="/" class="nav-button">Página Principal</a>
+        <a href="/db101.html" class="nav-button">DB101 (TLV1)</a>
+        <a href="/db102.html" class="nav-button">DB102 (TLV2)</a>
+    </div>
+    
+    <div class="tabs">
+        <div class="tab active" onclick="showTab('tlv1')">TLV1</div>
+    </div>
+    
+    <div class="container">
+        <!-- Tab content for TLV1 -->
+        <div id="tlv1-content" class="tab-content active">
+            <div class="card">
+                <h2>Estado del Transelevador TLV1 <span id="tlv1-status-badge" class="status active">CONECTADO</span></h2>
+                
+                <div class="controls">
+                    <button id="tlv1-btn-auto">Modo Automático</button>
+                    <button id="tlv1-btn-manual">Modo Manual</button>
+                    <button id="tlv1-btn-create-order">Crear Orden Aleatoria</button>
+                </div>
+                
+                <div class="grid-container">
+                    <div>
+                        <div class="data-row">
+                            <span class="label">Modo:</span>
+                            <span id="tlv1-mode" class="value">AUTOMÁTICO</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="label">Ocupación:</span>
+                            <span id="tlv1-occupation" class="value">LIBRE</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="label">Avería:</span>
+                            <span id="tlv1-error" class="value">NO</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="data-row">
+                            <span class="label">Coordenada X:</span>
+                            <span id="tlv1-coord-x" class="value">0</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="label">Coordenada Y:</span>
+                            <span id="tlv1-coord-y" class="value">0</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="label">Coordenada Z:</span>
+                            <span id="tlv1-coord-z" class="value">0</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="label">Pasillo:</span>
+                            <span id="tlv1-pasillo" class="value">1</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="order-info">
+                    <h3>Orden Actual</h3>
+                    <div class="data-row">
+                        <span class="label">Tipo:</span>
+                        <span id="tlv1-order-type" class="value">SIN ORDEN</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="label">Matrícula:</span>
+                        <span id="tlv1-order-matricula" class="value">-</span>
+                    </div>
+                    
+                    <div class="grid-container">
+                        <div>
+                            <h4>Origen</h4>
+                            <div class="data-row">
+                                <span class="label">Pasillo:</span>
+                                <span id="tlv1-origin-pasillo" class="value">-</span>
+                            </div>
+                            <div class="data-row">
+                                <span class="label">X:</span>
+                                <span id="tlv1-origin-x" class="value">-</span>
+                            </div>
+                            <div class="data-row">
+                                <span class="label">Y:</span>
+                                <span id="tlv1-origin-y" class="value">-</span>
+                            </div>
+                            <div class="data-row">
+                                <span class="label">Z:</span>
+                                <span id="tlv1-origin-z" class="value">-</span>
+                            </div>
+                        </div>
+                        <div>
+                            <h4>Destino</h4>
+                            <div class="data-row">
+                                <span class="label">Pasillo:</span>
+                                <span id="tlv1-dest-pasillo" class="value">-</span>
+                            </div>
+                            <div class="data-row">
+                                <span class="label">X:</span>
+                                <span id="tlv1-dest-x" class="value">-</span>
+                            </div>
+                            <div class="data-row">
+                                <span class="label">Y:</span>
+                                <span id="tlv1-dest-y" class="value">-</span>
+                            </div>
+                            <div class="data-row">
+                                <span class="label">Z:</span>
+                                <span id="tlv1-dest-z" class="value">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="order-info">
+                    <h3>Fin de Orden</h3>
+                    <div class="data-row">
+                        <span class="label">Estado:</span>
+                        <span id="tlv1-fin-orden-estado" class="value">-</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="label">Resultado:</span>
+                        <span id="tlv1-fin-orden-resultado" class="value">-</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2>Registro de Actividad TLV1</h2>
+                <div id="tlv1-log" class="log-container"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        // Función para cambiar de pestaña
+        function showTab(tabName) {
+            // Ocultar todos los contenidos de pestañas
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // Desactivar todas las pestañas
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Mostrar el contenido de la pestaña seleccionada
+            document.getElementById(`${tabName}-content`).classList.add('active');
+            
+            // Activar la pestaña seleccionada
+            document.querySelectorAll('.tab').forEach(tab => {
+                if (tab.textContent === tabName.toUpperCase()) {
+                    tab.classList.add('active');
+                }
+            });
+        }
+        
+        // Conectar a Socket.IO
+        const socket = io();
+        
+        // Función para agregar entrada de log
+        function addLogEntry(device, message) {
+            const logContainer = document.getElementById(`${device}-log`);
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            logEntry.innerHTML = `<span class="timestamp">[${timestamp}]</span> ${message}`;
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+        
+        // Función para actualizar la UI de TLV1
+        function updateTLV1UI(data) {
+            if (!data || !data[0]) return;
+            
+            const tlv1 = data[0];
+            
+            // Actualizar estado
+            document.getElementById('tlv1-mode').textContent = tlv1.state.mode || 'DESCONOCIDO';
+            document.getElementById('tlv1-occupation').textContent = tlv1.state.occupation ? 'OCUPADO' : 'LIBRE';
+            document.getElementById('tlv1-error').textContent = tlv1.state.error ? 'SÍ' : 'NO';
+            
+            // Actualizar coordenadas
+            document.getElementById('tlv1-coord-x').textContent = tlv1.position.x || '0';
+            document.getElementById('tlv1-coord-y').textContent = tlv1.position.y || '0';
+            document.getElementById('tlv1-coord-z').textContent = tlv1.position.z || '0';
+            document.getElementById('tlv1-pasillo').textContent = tlv1.position.pasillo || '1';
+            
+            // Actualizar orden actual
+            document.getElementById('tlv1-order-type').textContent = tlv1.currentOrder.type || 'SIN ORDEN';
+            document.getElementById('tlv1-order-matricula').textContent = tlv1.currentOrder.matricula || '-';
+            
+            // Actualizar origen
+            document.getElementById('tlv1-origin-pasillo').textContent = tlv1.currentOrder.origin.pasillo || '-';
+            document.getElementById('tlv1-origin-x').textContent = tlv1.currentOrder.origin.x || '-';
+            document.getElementById('tlv1-origin-y').textContent = tlv1.currentOrder.origin.y || '-';
+            document.getElementById('tlv1-origin-z').textContent = tlv1.currentOrder.origin.z || '-';
+            
+            // Actualizar destino
+            document.getElementById('tlv1-dest-pasillo').textContent = tlv1.currentOrder.destination.pasillo || '-';
+            document.getElementById('tlv1-dest-x').textContent = tlv1.currentOrder.destination.x || '-';
+            document.getElementById('tlv1-dest-y').textContent = tlv1.currentOrder.destination.y || '-';
+            document.getElementById('tlv1-dest-z').textContent = tlv1.currentOrder.destination.z || '-';
+            
+            // Actualizar fin de orden
+            document.getElementById('tlv1-fin-orden-estado').textContent = tlv1.finOrden?.estado || '-';
+            document.getElementById('tlv1-fin-orden-resultado').textContent = tlv1.finOrden?.resultado || '-';
+            
+            // Actualizar clase de estado
+            const statusBadge = document.getElementById('tlv1-status-badge');
+            statusBadge.className = 'status ' + tlv1.status;
+            statusBadge.textContent = 'CONECTADO';
+        }
+        
+        // Eventos de Socket.IO
+        socket.on('connect', () => {
+            addLogEntry('tlv1', 'Conectado al servidor');
+            document.getElementById('tlv1-status-badge').className = 'status active';
+            document.getElementById('tlv1-status-badge').textContent = 'CONECTADO';
+        });
+        
+        socket.on('disconnect', () => {
+            addLogEntry('tlv1', 'Desconectado del servidor');
+            document.getElementById('tlv1-status-badge').className = 'status error';
+            document.getElementById('tlv1-status-badge').textContent = 'DESCONECTADO';
+        });
+        
+        // Recibir datos de TLV1
+        socket.on('tlv1-data', (data) => {
+            updateTLV1UI(data);
+            addLogEntry('tlv1', `Datos actualizados: ${JSON.stringify(data[0].position)}`);
+        });
+        
+        socket.on('error', (error) => {
+            addLogEntry('tlv1', `Error: ${error.message}`);
+        });
+        
+        // Eventos de botones TLV1
+        document.getElementById('tlv1-btn-auto').addEventListener('click', () => {
+            socket.emit('updatePosition', {
+                id: 'tlv1',
+                position: { modo: 0 }
+            });
+            addLogEntry('tlv1', 'Cambiando a modo automático');
+        });
+        
+        document.getElementById('tlv1-btn-manual').addEventListener('click', () => {
+            socket.emit('updatePosition', {
+                id: 'tlv1',
+                position: { modo: 2 }
+            });
+            addLogEntry('tlv1', 'Cambiando a modo manual');
+        });
+        
+        document.getElementById('tlv1-btn-create-order').addEventListener('click', () => {
+            // Generar una orden aleatoria para TLV1
+            const orderType = Math.floor(Math.random() * 4) + 1; // 1-5
+            const pasillo = Math.floor(Math.random() * 12) + 1;
+            const x = Math.floor(Math.random() * 59) + 1;
+            const y = Math.floor(Math.random() * 12) + 1;
+            const z = Math.random() > 0.5 ? 1 : 2;
+            
+            socket.emit('createOrder', {
+                id: 'tlv1',
+                type: orderType,
+                origin: { pasillo, x, y, z },
+                destination: { 
+                    pasillo: Math.floor(Math.random() * 12) + 1,
+                    x: Math.floor(Math.random() * 59) + 1,
+                    y: Math.floor(Math.random() * 12) + 1,
+                    z: Math.random() > 0.5 ? 1 : 2
+                }
+            });
+            
+            addLogEntry('tlv1', `Creando orden aleatoria de tipo ${orderType}`);
+        });
+        
+        // Inicialización
+        addLogEntry('tlv1', 'Inicializando visualización TLV1');
+        
+        // Solicitar datos iniciales
+        socket.emit('requestData', { id: 'tlv1' });
+    </script>
+</body>
+</html>

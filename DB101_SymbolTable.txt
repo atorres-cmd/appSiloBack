@@ -1,0 +1,65 @@
+===============================================================
+TABLA DE SÍMBOLOS DEL DB101 (TRANSELEVADOR TLV1)
+===============================================================
+
+NOMBRE SIMBÓLICO                  | DIRECCIÓN ABSOLUTA | TIPO DE DATO | DESCRIPCIÓN
+----------------------------------|-------------------|--------------|------------------------------------------
+TLV1.MODO                         | DB101,B0          | BYTE         | Modo de operación (0: AUTOMÁTICO, 1: SEMIAUTOMÁTICO, 2: MANUAL)
+TLV1.OCUPACION                    | DB101,X0.0        | BOOL         | Estado de ocupación (false: LIBRE, true: OCUPADO)
+TLV1.AVERIA                       | DB101,X0.1        | BOOL         | Estado de avería (false: OK, true: AVERÍA)
+TLV1.COORD_X                      | DB101,W10         | WORD         | Coordenada X actual
+TLV1.COORD_Y                      | DB101,W12         | WORD         | Coordenada Y actual
+TLV1.COORD_Z                      | DB101,W14         | WORD         | Coordenada Z actual
+TLV1.MATRICULA                    | DB101,W16         | WORD         | Matrícula actual
+TLV1.PASILLO                      | DB101,B18         | BYTE         | Pasillo actual
+TLV1.ORDEN.TIPO                   | DB101,B20         | BYTE         | Tipo de orden (0: SIN ORDEN, 1: DEPÓSITO, 2: EXTRACCIÓN, etc.)
+TLV1.ORIGEN.PASILLO               | DB101,B22         | BYTE         | Pasillo de origen
+TLV1.ORIGEN.X                     | DB101,B23         | BYTE         | Coordenada X de origen
+TLV1.ORIGEN.Y                     | DB101,B24         | BYTE         | Coordenada Y de origen
+TLV1.ORIGEN.Z                     | DB101,B25         | BYTE         | Coordenada Z de origen
+TLV1.DESTINO.PASILLO              | DB101,B27         | BYTE         | Pasillo de destino
+TLV1.DESTINO.X                    | DB101,B28         | BYTE         | Coordenada X de destino
+TLV1.DESTINO.Y                    | DB101,B29         | BYTE         | Coordenada Y de destino
+TLV1.DESTINO.Z                    | DB101,B30         | BYTE         | Coordenada Z de destino
+TLV1.ORDEN.MATRICULA              | DB101,W32         | WORD         | Matrícula de la orden
+TLV1.FIN_ORDEN.ESTADO             | DB101,B40         | BYTE         | Estado de fin de orden (0: SIN ORDEN, 1: EN CURSO, 2: FIN DE ORDEN, etc.)
+TLV1.FIN_ORDEN.RESULTADO          | DB101,B41         | BYTE         | Resultado de fin de orden (0: OK DEPÓSITO, 2: OK EXTRACCIÓN, etc.)
+TLV1.FIN_ORDEN.DESTINO.PASILLO    | DB101,B42         | BYTE         | Pasillo de destino final
+TLV1.FIN_ORDEN.DESTINO.X          | DB101,B43         | BYTE         | Coordenada X de destino final
+TLV1.FIN_ORDEN.DESTINO.Y          | DB101,B44         | BYTE         | Coordenada Y de destino final
+TLV1.FIN_ORDEN.DESTINO.Z          | DB101,B45         | BYTE         | Coordenada Z de destino final
+
+===============================================================
+VALORES POSIBLES PARA CAMPOS ENUMERADOS
+===============================================================
+
+TLV1.MODO (DB101,B0):
+---------------------
+0: AUTOMÁTICO
+1: SEMIAUTOMÁTICO
+2: MANUAL
+
+TLV1.ORDEN.TIPO (DB101,B20):
+---------------------------
+0: SIN ORDEN
+1: DEPÓSITO
+2: EXTRACCIÓN
+3: CAMBIO PASILLO
+4: TRASVASE
+5: TEST
+
+TLV1.FIN_ORDEN.ESTADO (DB101,B40):
+---------------------------------
+0: SIN ORDEN
+1: EN CURSO
+2: FIN DE ORDEN
+4: ESTADO ESPECIAL (observado en PLC real)
+
+TLV1.FIN_ORDEN.RESULTADO (DB101,B41):
+------------------------------------
+0: OK DEPÓSITO
+2: OK EXTRACCIÓN
+3: ERROR DEPÓSITO
+4: ERROR EXTRACCIÓN
+5: OK TRASVASE
+6: ABORTADO

@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DB101 - Estado TLV1 | AKOMA</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background: #f8f9fa; padding: 20px; }
+        .card { margin-bottom: 20px; }
+        .status { font-weight: bold; margin-left: 10px; }
+        .active { color: #28a745; }
+        .error { color: #dc3545; }
+        .header-logo { height: 40px; margin-right: 15px; }
+        .navbar { margin-bottom: 20px; }
+        .footer { margin-top: 30px; padding: 15px 0; border-top: 1px solid #dee2e6; }
+        .login-container { max-width: 400px; margin: 100px auto; }
+        #mainContent { display: none; }
+        #loginForm { display: block; }
+        .user-info { display: flex; align-items: center; }
+        .user-avatar { width: 30px; height: 30px; border-radius: 50%; margin-right: 10px; background-color: #007bff; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <!-- Formulario de Login -->
+    <div id="loginForm" class="login-container">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <img src="https://via.placeholder.com/40" class="header-logo" alt="AKOMA">
+                Acceso al Sistema de Monitorización
+            </div>
+            <div class="card-body">
+                <div class="text-center mb-4">
+                    <h4>AKOMA</h4>
+                    <p class="text-muted">Sistema de Monitorización de Transelevador TLV1</p>
+                </div>
+                <div id="loginError" class="alert alert-danger" style="display:none;"></div>
+                <div class="mb-3">
+                    <label for="username" class="form-label">Usuario</label>
+                    <input type="text" class="form-control" id="username" placeholder="Nombre de usuario">
+                </div>
+                <div class="mb-3">
+                    <label for="password" class="form-label">Contraseña</label>
+                    <input type="password" class="form-control" id="password" placeholder="Contraseña">
+                </div>
+                <div class="d-grid gap-2">
+                    <button type="button" id="loginButton" class="btn btn-primary">Iniciar Sesión</button>
+                </div>
+            </div>
+            <div class="card-footer text-center text-muted">
+                Desarrollado por AUTOMATICA INTEGRAL
+            </div>
+        </div>
+    </div>
+
+    <!-- Contenido Principal -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light" id="mainNav" style="display:none;">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <img src="https://via.placeholder.com/40" class="header-logo" alt="AKOMA">
+                AKOMA
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    <li class="nav-item">
+                        <a class="nav-link active" aria-current="page" href="#">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">Histórico</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">Configuración</a>
+                    </li>
+                </ul>
+                <div class="user-info">
+                    <div class="user-avatar" id="userInitials">AI</div>
+                    <span id="userName">Usuario</span>
+                    <div class="ms-3 me-2">
+                        <small class="d-block text-muted">Sesión expira en:</small>
+                        <span id="sessionTimeRemaining" class="fw-bold">30:00</span>
+                    </div>
+                    <button class="btn btn-sm btn-outline-secondary ms-2" id="logoutButton">Salir</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+    <div id="mainContent" class="container">
+        <h1 class="mb-4">Visualización DB101 (TLV1)</h1>
+        <div class="card">
+            <div class="card-header bg-primary text-white">Estado del Transelevador TLV1</div>
+            <div class="card-body">
+                <div id="tlv1Error" class="text-danger mb-2" style="display:none;"></div>
+                <div id="tlv1Loading" class="mb-2">Cargando datos...</div>
+                <table class="table table-bordered" id="tlv1Table" style="display:none;">
+                    <tbody>
+                        <tr><th>Modo</th><td id="modo"></td></tr>
+                        <tr><th>Ocupación</th><td id="ocupacion"></td></tr>
+                        <tr><th>Avería</th><td id="averia"></td></tr>
+                        <tr><th>Coordenada X</th><td id="coord_x"></td></tr>
+                        <tr><th>Coordenada Y</th><td id="coord_y"></td></tr>
+                        <tr><th>Coordenada Z</th><td id="coord_z"></td></tr>
+                        <tr><th>Matrícula</th><td id="matricula"></td></tr>
+                        <tr><th>Pasillo</th><td id="pasillo"></td></tr>
+                        <tr><th>Tipo de Orden</th><td id="tipo_orden"></td></tr>
+                        <tr><th>Estado Fin Orden</th><td id="fin_orden_estado"></td></tr>
+                        <tr><th>Resultado Fin Orden</th><td id="fin_orden_resultado"></td></tr>
+                        <tr><th>Timestamp</th><td id="timestamp"></td></tr>
+                    </tbody>
+                </table>
+                <form id="plcForm" style="display:none;">
+                    <table class="table table-bordered">
+                        <tbody>
+                            <tr><th>Modo</th><td><input type="number" class="form-control" name="modo" id="input_modo"></td></tr>
+                            <tr><th>Ocupación</th><td><select class="form-control" name="ocupacion" id="input_ocupacion"><option value="true">OCUPADO</option><option value="false">LIBRE</option></select></td></tr>
+                            <tr><th>Avería</th><td><select class="form-control" name="averia" id="input_averia"><option value="true">SÍ</option><option value="false">NO</option></select></td></tr>
+                            <tr><th>Coordenada X</th><td><input type="number" class="form-control" name="coord_x" id="input_coord_x"></td></tr>
+                            <tr><th>Coordenada Y</th><td><input type="number" class="form-control" name="coord_y" id="input_coord_y"></td></tr>
+                            <tr><th>Coordenada Z</th><td><input type="number" class="form-control" name="coord_z" id="input_coord_z"></td></tr>
+                            <tr><th>Matrícula</th><td><input type="number" class="form-control" name="matricula" id="input_matricula"></td></tr>
+                            <tr><th>Pasillo</th><td><input type="number" class="form-control" name="pasillo" id="input_pasillo"></td></tr>
+                            <tr><th>Tipo de Orden</th><td><input type="number" class="form-control" name="tipo_orden" id="input_tipo_orden"></td></tr>
+                            <tr><th>Estado Fin Orden</th><td><input type="number" class="form-control" name="fin_orden_estado" id="input_fin_orden_estado"></td></tr>
+                            <tr><th>Resultado Fin Orden</th><td><input type="number" class="form-control" name="fin_orden_resultado" id="input_fin_orden_resultado"></td></tr>
+                        </tbody>
+                    </table>
+                    <button type="submit" class="btn btn-success">Guardar/Escribir en PLC</button>
+                    <div id="plcFormMsg" class="mt-2"></div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pie de página -->
+    <footer class="footer" id="mainFooter" style="display:none;">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>AKOMA</strong> - Sistema de Monitorización de Transelevador TLV1</p>
+                    <p class="text-muted">© 2025 Todos los derechos reservados</p>
+                </div>
+                <div class="col-md-6 text-end">
+                    <p>Desarrollado por <strong>AUTOMATICA INTEGRAL</strong></p>
+                    <p class="text-muted">Versión 1.0.0</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Función debounce para limitar la frecuencia de eventos
+            function debounce(func, wait) {
+                let timeout;
+                return function() {
+                    const context = this;
+                    const args = arguments;
+                    clearTimeout(timeout);
+                    timeout = setTimeout(() => {
+                        func.apply(context, args);
+                    }, wait);
+                };
+            }
+            // Usuarios predefinidos (en un sistema real, esto estaría en el backend)
+            const users = [
+                { username: 'admin', password: 'admin123', name: 'Administrador', role: 'admin', initials: 'AD' },
+                { username: 'operador', password: 'op123', name: 'Operador', role: 'operator', initials: 'OP' },
+                { username: 'supervisor', password: 'super123', name: 'Supervisor', role: 'supervisor', initials: 'SV' }
+            ];
+            
+            // Tiempo de expiración de sesión en milisegundos (30 minutos)
+            const SESSION_TIMEOUT = 30 * 60 * 1000;
+            let sessionTimeoutId;
+            let lastActivityTime;
+            
+            // Función para registrar actividad del usuario
+            const registerUserActivity = () => {
+                lastActivityTime = Date.now();
+                localStorage.setItem('tlv1_last_activity', lastActivityTime.toString());
+                
+                // Reiniciar el temporizador de sesión
+                if (sessionTimeoutId) {
+                    clearTimeout(sessionTimeoutId);
+                }
+                
+                // Configurar nuevo temporizador
+                sessionTimeoutId = setTimeout(checkSessionTimeout, SESSION_TIMEOUT);
+            };
+            
+            // Función para verificar si la sesión ha expirado
+            const checkSessionTimeout = () => {
+                const lastActivity = parseInt(localStorage.getItem('tlv1_last_activity') || '0');
+                const currentTime = Date.now();
+                
+                if (currentTime - lastActivity > SESSION_TIMEOUT) {
+                    // La sesión ha expirado
+                    localStorage.removeItem('tlv1_user');
+                    localStorage.removeItem('tlv1_last_activity');
+                    showLoginForm();
+                    alert('Su sesión ha expirado por inactividad. Por favor, inicie sesión nuevamente.');
+                } else {
+                    // Configurar el próximo chequeo
+                    const remainingTime = SESSION_TIMEOUT - (currentTime - lastActivity);
+                    sessionTimeoutId = setTimeout(checkSessionTimeout, remainingTime);
+                }
+            };
+
+            // Comprobar si hay una sesión guardada
+            const checkSession = () => {
+                const user = JSON.parse(localStorage.getItem('tlv1_user') || 'null');
+                const lastActivity = parseInt(localStorage.getItem('tlv1_last_activity') || '0');
+                const currentTime = Date.now();
+                
+                if (user) {
+                    // Verificar si la sesión ha expirado
+                    if (currentTime - lastActivity > SESSION_TIMEOUT) {
+                        // La sesión ha expirado
+                        localStorage.removeItem('tlv1_user');
+                        localStorage.removeItem('tlv1_last_activity');
+                        showLoginForm();
+                    } else {
+                        // La sesión es válida
+                        showMainContent(user);
+                        registerUserActivity();
+                    }
+                }
+            };
+
+            // Mostrar el contenido principal y ocultar el login
+            /**
+             * Mostrar el contenido principal y ocultar el login. Se muestra el menú de navegación,
+             * el contenido principal y el pie de página. Se carga la tabla de datos del PLC,
+             * se refresca cada 1 segundo y se registra la actividad del usuario.
+             * @param {Object} user - Objeto con la información del usuario que ha iniciado sesión.
+             */
+            const showMainContent = (user) => {
+                document.getElementById('loginForm').style.display = 'none';
+                document.getElementById('mainNav').style.display = 'flex';
+                document.getElementById('mainContent').style.display = 'block';
+                document.getElementById('mainFooter').style.display = 'block';
+                document.getElementById('userInitials').textContent = user.initials;
+                document.getElementById('userName').textContent = user.name;
+                // Iniciar la carga de datos del PLC
+                loadPLCData(true);
+                // Refrescar solo la tabla cada 1 segundo
+                window.plcDataInterval = setInterval(() => loadPLCData(false), 1000);
+                
+                // Registrar eventos de actividad del usuario
+                document.addEventListener('click', registerUserActivity);
+                document.addEventListener('keypress', registerUserActivity);
+                document.addEventListener('mousemove', debounce(registerUserActivity, 1000));
+                document.addEventListener('scroll', debounce(registerUserActivity, 1000));
+                
+                // Registrar la actividad inicial
+                registerUserActivity();
+                
+                // Iniciar el contador de tiempo restante de sesión
+                updateSessionTimeRemaining();
+            };
+
+            // Ocultar el contenido principal y mostrar el login
+            const showLoginForm = () => {
+                document.getElementById('loginForm').style.display = 'block';
+                document.getElementById('mainNav').style.display = 'none';
+                document.getElementById('mainContent').style.display = 'none';
+                document.getElementById('mainFooter').style.display = 'none';
+                
+                // Detener la actualización de datos
+                if (window.plcDataInterval) {
+                    clearInterval(window.plcDataInterval);
+                }
+                
+                // Detener el contador de actualización
+                if (window.updateCountdown) {
+                    clearInterval(window.updateCountdown);
+                }
+                
+                // Eliminar el mensaje de info de actualización si existe
+                const updateInfoElement = document.getElementById('updateInfo');
+                if (updateInfoElement) {
+                    updateInfoElement.remove();
+                }
+                
+                // Limpiar el temporizador de sesión
+                if (sessionTimeoutId) {
+                    clearTimeout(sessionTimeoutId);
+                    sessionTimeoutId = null;
+                }
+                
+                // Eliminar los event listeners
+                document.removeEventListener('click', registerUserActivity);
+                document.removeEventListener('keypress', registerUserActivity);
+                document.removeEventListener('mousemove', debounce(registerUserActivity, 1000));
+                document.removeEventListener('scroll', debounce(registerUserActivity, 1000));
+            };
+            
+            // Función para mostrar el tiempo restante de sesión
+            const updateSessionTimeRemaining = () => {
+                const lastActivity = parseInt(localStorage.getItem('tlv1_last_activity') || '0');
+                const currentTime = Date.now();
+                const elapsedTime = currentTime - lastActivity;
+                const remainingTime = Math.max(0, SESSION_TIMEOUT - elapsedTime);
+                
+                // Convertir a minutos y segundos
+                const minutes = Math.floor(remainingTime / 60000);
+                const seconds = Math.floor((remainingTime % 60000) / 1000);
+                
+                // Actualizar el elemento en la interfaz si existe
+                const sessionTimeElement = document.getElementById('sessionTimeRemaining');
+                if (sessionTimeElement) {
+                    sessionTimeElement.textContent = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+                    
+                    // Cambiar el color cuando queden menos de 5 minutos
+                    if (minutes < 5) {
+                        sessionTimeElement.classList.add('text-danger');
+                    } else {
+                        sessionTimeElement.classList.remove('text-danger');
+                    }
+                }
+                
+                // Actualizar cada segundo
+                setTimeout(updateSessionTimeRemaining, 1000);
+            };
+
+            // Manejar el inicio de sesión
+            document.getElementById('loginButton').addEventListener('click', function() {
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
+                const errorDiv = document.getElementById('loginError');
+
+                if (!username || !password) {
+                    errorDiv.textContent = 'Por favor, introduce usuario y contraseña';
+                    errorDiv.style.display = 'block';
+                    return;
+                }
+
+                const user = users.find(u => u.username === username && u.password === password);
+                if (user) {
+                    // Registrar la actividad inicial
+                    const currentTime = Date.now();
+                    localStorage.setItem('tlv1_last_activity', currentTime.toString());
+                    
+                    // Guardar sesión
+                    localStorage.setItem('tlv1_user', JSON.stringify(user));
+                    showMainContent(user);
+                    errorDiv.style.display = 'none';
+                } else {
+                    errorDiv.textContent = 'Usuario o contraseña incorrectos';
+                    errorDiv.style.display = 'block';
+                }
+            });
+
+            // Manejar el cierre de sesión
+            document.getElementById('logoutButton').addEventListener('click', function() {
+                localStorage.removeItem('tlv1_user');
+                showLoginForm();
+                // Limpiar los campos de login
+                document.getElementById('username').value = '';
+                document.getElementById('password').value = '';
+                document.getElementById('loginError').style.display = 'none';
+            });
+
+            // Funciones para actualizar la interfaz con datos del PLC
+            function updateReadTable(record) {
+                document.getElementById('modo').textContent = record.modo;
+                document.getElementById('ocupacion').textContent = record.ocupacion ? 'OCUPADO' : 'LIBRE';
+                document.getElementById('averia').textContent = record.averia ? 'SÍ' : 'NO';
+                document.getElementById('coord_x').textContent = record.coord_x;
+                document.getElementById('coord_y').textContent = record.coord_y;
+                document.getElementById('coord_z').textContent = record.coord_z;
+                document.getElementById('matricula').textContent = record.matricula;
+                document.getElementById('pasillo').textContent = record.pasillo;
+                document.getElementById('tipo_orden').textContent = record.tipo_orden;
+                document.getElementById('fin_orden_estado').textContent = record.fin_orden_estado;
+                document.getElementById('fin_orden_resultado').textContent = record.fin_orden_resultado;
+                document.getElementById('timestamp').textContent = record.timestamp;
+                document.getElementById('tlv1Table').style.display = '';
+            }
+
+            function updateInputs(record) {
+                document.getElementById('input_modo').value = record.modo;
+                document.getElementById('input_ocupacion').value = record.ocupacion;
+                document.getElementById('input_averia').value = record.averia;
+                document.getElementById('input_coord_x').value = record.coord_x;
+                document.getElementById('input_coord_y').value = record.coord_y;
+                document.getElementById('input_coord_z').value = record.coord_z;
+                document.getElementById('input_matricula').value = record.matricula;
+                document.getElementById('input_pasillo').value = record.pasillo;
+                document.getElementById('input_tipo_orden').value = record.tipo_orden;
+                document.getElementById('input_fin_orden_estado').value = record.fin_orden_estado;
+                document.getElementById('input_fin_orden_resultado').value = record.fin_orden_resultado;
+                document.getElementById('plcForm').style.display = '';
+            }
+
+            function loadPLCData(updateForm = false) {
+                fetch('/api/data/tlv1')
+                    .then(res => {
+                        if (!res.ok) throw new Error('HTTP error! status: ' + res.status);
+                        return res.json();
+                    })
+                    .then(data => {
+                        document.getElementById('tlv1Loading').style.display = 'none';
+                        if (data.success && data.data.length > 0) {
+                            const record = data.data[0];
+                            updateReadTable(record);
+                            if (updateForm) updateInputs(record);
+                        } else {
+                            document.getElementById('tlv1Error').textContent = 'No hay datos disponibles para TLV1.';
+                            document.getElementById('tlv1Error').style.display = '';
+                        }
+                    })
+                    .catch(error => {
+                        document.getElementById('tlv1Loading').style.display = 'none';
+                        document.getElementById('tlv1Error').textContent = 'Error al cargar datos de TLV1: ' + error.message;
+                        document.getElementById('tlv1Error').style.display = '';
+                    });
+            }
+
+            // Manejar el envío del formulario
+            document.getElementById('plcForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                const msgDiv = document.getElementById('plcFormMsg');
+                msgDiv.textContent = '';
+                const formData = {
+                    modo: Number(document.getElementById('input_modo').value),
+                    ocupacion: document.getElementById('input_ocupacion').value === 'true',
+                    averia: document.getElementById('input_averia').value === 'true',
+                    coord_x: Number(document.getElementById('input_coord_x').value),
+                    coord_y: Number(document.getElementById('input_coord_y').value),
+                    coord_z: Number(document.getElementById('input_coord_z').value),
+                    matricula: Number(document.getElementById('input_matricula').value),
+                    pasillo: Number(document.getElementById('input_pasillo').value),
+                    tipo_orden: Number(document.getElementById('input_tipo_orden').value),
+                    fin_orden_estado: Number(document.getElementById('input_fin_orden_estado').value),
+                    fin_orden_resultado: Number(document.getElementById('input_fin_orden_resultado').value)
+                };
+                fetch('/api/plc/db101/writeAll', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                })
+                .then(res => res.json())
+                .then(result => {
+                    if (result.success) {
+                        msgDiv.textContent = '¡Valores escritos correctamente en el PLC!';
+                        msgDiv.className = 'alert alert-success mt-2';
+                        setTimeout(() => loadPLCData(true), 2000); // Refrescar inputs y tabla después de 2 segundos
+                    } else {
+                        msgDiv.textContent = 'Error al escribir en el PLC: ' + (result.message || '');
+                        msgDiv.className = 'alert alert-danger mt-2';
+                    }
+                })
+                .catch(err => {
+                    msgDiv.textContent = 'Error de red o del servidor: ' + err.message;
+                    msgDiv.className = 'alert alert-danger mt-2';
+                });
+            });
+
+            // Comprobar sesión al cargar la página
+            checkSession();
+        });
+    </script>
+</body>
+</html> 

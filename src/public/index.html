@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualización Transelevadores</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .card {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        h2 {
+            color: #0066cc;
+            margin-top: 0;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        .status {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .active {
+            background-color: #4CAF50;
+            color: white;
+        }
+        .inactive {
+            background-color: #9e9e9e;
+            color: white;
+        }
+        .error {
+            background-color: #f44336;
+            color: white;
+        }
+        .moving {
+            background-color: #2196F3;
+            color: white;
+        }
+        .grid-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .label {
+            font-weight: bold;
+            color: #555;
+        }
+        .value {
+            color: #333;
+        }
+        .silo-visualization {
+            position: relative;
+            width: 100%;
+            height: 400px;
+            background-color: #e9e9e9;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .transelevador {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background-color: #0066cc;
+            border-radius: 4px;
+            transform: translate(-50%, -50%);
+            transition: all 0.5s ease;
+        }
+        .log-container {
+            height: 200px;
+            overflow-y: auto;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .log-entry {
+            margin-bottom: 5px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #eee;
+        }
+        .timestamp {
+            color: #999;
+            margin-right: 10px;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 8px 16px;
+            background-color: #0066cc;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0055aa;
+        }
+        .order-info {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f0f7ff;
+            border-radius: 4px;
+            border-left: 4px solid #0066cc;
+        }
+    </style>
+</head>
+<body>
+    <h1>Visualización Transelevadores</h1>
+    <div style="text-align: center; margin-bottom: 20px;">
+        <a href="/data-viewer" class="btn btn-primary" style="display: inline-block; padding: 10px 20px; background-color: #0066cc; color: white; text-decoration: none; border-radius: 4px; font-weight: bold;">Ver Datos Almacenados</a>
+    </div>
+    <h1>Visualización Transelevador TLV1 <span id="status-badge" class="status active">CONECTADO</span></h1>
+    <p style="text-align: center; margin-bottom: 20px;">Sistema de control para transelevadores TLV1</p>
+    
+    <div style="text-align: center; margin-bottom: 20px;">
+        <a href="/db101.html" style="display: inline-block; padding: 10px 20px; background-color: #0066cc; color: white; text-decoration: none; border-radius: 4px; font-weight: bold; margin: 0 10px;">Ver DB101 (TLV1)</a>
+        <a href="/dual-view.html" style="display: inline-block; padding: 10px 20px; background-color: #28a745; color: white; text-decoration: none; border-radius: 4px; font-weight: bold; margin: 0 10px;">Vista Dual</a>
+    </div>
+    
+    <div class="container">
+        <div class="card">
+            <h2>Estado del Transelevador</h2>
+            <div class="grid-container">
+                <div>
+                    <div class="data-row">
+                        <span class="label">Modo:</span>
+                        <span id="mode" class="value">AUTOMÁTICO</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="label">Estado:</span>
+                        <span id="status" class="value">ACTIVO</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="label">Ocupación:</span>
+                        <span id="occupation" class="value">LIBRE</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="label">Avería:</span>
+                        <span id="error" class="value">NO</span>
+                    </div>
+                </div>
+                <div>
+                    <div class="data-row">
+                        <span class="label">Coordenada X:</span>
+                        <span id="coord-x" class="value">0</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="label">Coordenada Y:</span>
+                        <span id="coord-y" class="value">0</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="label">Coordenada Z:</span>
+                        <span id="coord-z" class="value">1</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="label">Pasillo:</span>
+                        <span id="pasillo" class="value">1</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="order-info">
+                <h3>Orden Actual</h3>
+                <div class="data-row">
+                    <span class="label">Tipo:</span>
+                    <span id="order-type" class="value">SIN ORDEN</span>
+                </div>
+                <div class="data-row">
+                    <span class="label">Matrícula:</span>
+                    <span id="order-matricula" class="value">-</span>
+                </div>
+                <div class="grid-container">
+                    <div>
+                        <h4>Origen</h4>
+                        <div class="data-row">
+                            <span class="label">Pasillo:</span>
+                            <span id="origin-pasillo" class="value">-</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="label">X:</span>
+                            <span id="origin-x" class="value">-</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="label">Y:</span>
+                            <span id="origin-y" class="value">-</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="label">Z:</span>
+                            <span id="origin-z" class="value">-</span>
+                        </div>
+                    </div>
+                    <div>
+                        <h4>Destino</h4>
+                        <div class="data-row">
+                            <span class="label">Pasillo:</span>
+                            <span id="dest-pasillo" class="value">-</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="label">X:</span>
+                            <span id="dest-x" class="value">-</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="label">Y:</span>
+                            <span id="dest-y" class="value">-</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="label">Z:</span>
+                            <span id="dest-z" class="value">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2>Visualización del Silo</h2>
+            <div class="silo-visualization">
+                <div id="transelevador" class="transelevador"></div>
+            </div>
+            <div class="controls">
+                <button id="btn-auto">Modo Automático</button>
+                <button id="btn-manual">Modo Manual</button>
+                <button id="btn-create-order">Crear Orden Aleatoria</button>
+            </div>
+            <h3>Registro de Eventos</h3>
+            <div id="log" class="log-container"></div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        // Conectar al servidor Socket.IO
+        const socket = io();
+        const log = document.getElementById('log');
+        const transelevador = document.getElementById('transelevador');
+        
+        // Función para agregar entradas al registro
+        function addLogEntry(message) {
+            const now = new Date();
+            const timestamp = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+            
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.innerHTML = `<span class="timestamp">${timestamp}</span> ${message}`;
+            
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+            
+            // Limitar el número de entradas
+            if (log.children.length > 100) {
+                log.removeChild(log.children[0]);
+            }
+        }
+        
+        // Función para actualizar la posición visual del transelevador
+        function updateTranselevadorPosition(x, y) {
+            // Normalizar coordenadas al tamaño del contenedor
+            const container = document.querySelector('.silo-visualization');
+            const containerWidth = container.clientWidth;
+            const containerHeight = container.clientHeight;
+            
+            // Convertir coordenadas del PLC a porcentajes para la visualización
+            // Asumiendo que X va de 1 a 59 y Y de 1 a 12
+            const xPercent = (x / 59) * 100;
+            const yPercent = (y / 12) * 100;
+            
+            // Aplicar la posición
+            transelevador.style.left = `${xPercent}%`;
+            transelevador.style.top = `${yPercent}%`;
+        }
+        
+        // Función para actualizar la interfaz con los datos del transelevador
+        function updateUI(data) {
+            if (!data || !data[0]) return;
+            
+            const tlv1 = data[0];
+            
+            // Actualizar estado
+            document.getElementById('status').textContent = tlv1.status.toUpperCase();
+            document.getElementById('mode').textContent = tlv1.mode;
+            document.getElementById('occupation').textContent = tlv1.occupied ? 'OCUPADO' : 'LIBRE';
+            document.getElementById('error').textContent = tlv1.error ? 'SÍ' : 'NO';
+            
+            // Actualizar coordenadas
+            document.getElementById('coord-x').textContent = tlv1.position.x;
+            document.getElementById('coord-y').textContent = tlv1.position.y;
+            document.getElementById('coord-z').textContent = tlv1.position.z;
+            document.getElementById('pasillo').textContent = tlv1.position.pasillo;
+            
+            // Actualizar orden actual
+            document.getElementById('order-type').textContent = tlv1.currentOrder.type;
+            document.getElementById('order-matricula').textContent = tlv1.currentOrder.matricula || '-';
+            
+            // Actualizar origen
+            document.getElementById('origin-pasillo').textContent = tlv1.currentOrder.origin.pasillo || '-';
+            document.getElementById('origin-x').textContent = tlv1.currentOrder.origin.x || '-';
+            document.getElementById('origin-y').textContent = tlv1.currentOrder.origin.y || '-';
+            document.getElementById('origin-z').textContent = tlv1.currentOrder.origin.z || '-';
+            
+            // Actualizar destino
+            document.getElementById('dest-pasillo').textContent = tlv1.currentOrder.destination.pasillo || '-';
+            document.getElementById('dest-x').textContent = tlv1.currentOrder.destination.x || '-';
+            document.getElementById('dest-y').textContent = tlv1.currentOrder.destination.y || '-';
+            document.getElementById('dest-z').textContent = tlv1.currentOrder.destination.z || '-';
+            
+            // Actualizar posición visual
+            updateTranselevadorPosition(tlv1.position.x, tlv1.position.y);
+            
+            // Actualizar clase de estado
+            const statusBadge = document.getElementById('status-badge');
+            statusBadge.className = 'status ' + tlv1.status;
+            statusBadge.textContent = 'CONECTADO';
+            
+            // Actualizar clase del transelevador
+            transelevador.className = 'transelevador ' + tlv1.status;
+        }
+        
+        // Eventos de Socket.IO
+        socket.on('connect', () => {
+            addLogEntry('Conectado al servidor');
+            document.getElementById('status-badge').className = 'status active';
+            document.getElementById('status-badge').textContent = 'CONECTADO';
+        });
+        
+        socket.on('disconnect', () => {
+            addLogEntry('Desconectado del servidor');
+            document.getElementById('status-badge').className = 'status error';
+            document.getElementById('status-badge').textContent = 'DESCONECTADO';
+        });
+        
+        socket.on('components', (data) => {
+            updateUI(data);
+            addLogEntry(`Datos actualizados: ${JSON.stringify(data[0].position)}`);
+        });
+        
+        socket.on('error', (error) => {
+            addLogEntry(`Error: ${error.message}`);
+        });
+        
+        // Eventos de botones
+        document.getElementById('btn-auto').addEventListener('click', () => {
+            socket.emit('updatePosition', {
+                id: 'tlv1',
+                position: { modo: 0 }
+            });
+            addLogEntry('Cambiando a modo automático');
+        });
+        
+        document.getElementById('btn-manual').addEventListener('click', () => {
+            socket.emit('updatePosition', {
+                id: 'tlv1',
+                position: { modo: 2 }
+            });
+            addLogEntry('Cambiando a modo manual');
+        });
+        
+        document.getElementById('btn-create-order').addEventListener('click', () => {
+            // Generar una orden aleatoria
+            const orderType = Math.floor(Math.random() * 4) + 1; // 1-5
+            const pasillo = Math.floor(Math.random() * 12) + 1;
+            const x = Math.floor(Math.random() * 59) + 1;
+            const y = Math.floor(Math.random() * 59) + 1;
+            const z = Math.random() > 0.5 ? 1 : 2;
+            
+            socket.emit('createOrder', {
+                type: orderType,
+                origin: { pasillo, x, y, z },
+                destination: { 
+                    pasillo: Math.floor(Math.random() * 12) + 1,
+                    x: Math.floor(Math.random() * 59) + 1,
+                    y: Math.floor(Math.random() * 59) + 1,
+                    z: Math.random() > 0.5 ? 1 : 2
+                }
+            });
+            
+            addLogEntry(`Creando orden aleatoria de tipo ${orderType}`);
+        });
+        
+        // Inicialización
+        addLogEntry('Inicializando visualización');
+    </script>
+</body>
+</html>

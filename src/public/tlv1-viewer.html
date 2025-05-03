@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visor de Datos TLV1</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        .card {
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .card-header {
+            background-color: #0d6efd;
+            color: white;
+            font-weight: bold;
+        }
+        .table th {
+            background-color: #e9ecef;
+        }
+        .refresh-btn {
+            margin-bottom: 20px;
+        }
+        .timestamp {
+            font-size: 0.9rem;
+            color: #6c757d;
+            margin-bottom: 15px;
+        }
+        .status-indicator {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+        .status-on {
+            background-color: #28a745;
+        }
+        .status-off {
+            background-color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="my-4">Visor de Datos TLV1 (Tiempo Real)</h1>
+        
+        <div class="row">
+            <div class="col-md-12">
+                <button id="refreshBtn" class="btn btn-primary refresh-btn">
+                    <i class="bi bi-arrow-clockwise"></i> Actualizar Datos
+                </button>
+                <div id="lastUpdate" class="timestamp">Última actualización: --</div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Estado del TLV1 -->
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        Estado
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-striped">
+                            <tbody>
+                                <tr>
+                                    <th>Modo</th>
+                                    <td id="modo">--</td>
+                                </tr>
+                                <tr>
+                                    <th>Ocupación</th>
+                                    <td>
+                                        <span id="ocupacion-indicator" class="status-indicator"></span>
+                                        <span id="ocupacion">--</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>Avería</th>
+                                    <td>
+                                        <span id="averia-indicator" class="status-indicator"></span>
+                                        <span id="averia">--</span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Coordenadas del TLV1 -->
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        Coordenadas
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-striped">
+                            <tbody>
+                                <tr>
+                                    <th>X</th>
+                                    <td id="coord_x">--</td>
+                                </tr>
+                                <tr>
+                                    <th>Y</th>
+                                    <td id="coord_y">--</td>
+                                </tr>
+                                <tr>
+                                    <th>Z</th>
+                                    <td id="coord_z">--</td>
+                                </tr>
+                                <tr>
+                                    <th>Matrícula</th>
+                                    <td id="matricula">--</td>
+                                </tr>
+                                <tr>
+                                    <th>Pasillo</th>
+                                    <td id="pasillo">--</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Orden y Fin de Orden -->
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        Orden
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-striped">
+                            <tbody>
+                                <tr>
+                                    <th>Tipo de Orden</th>
+                                    <td id="tipo_orden">--</td>
+                                </tr>
+                                <tr>
+                                    <th>Estado Fin de Orden</th>
+                                    <td id="fin_orden_estado">--</td>
+                                </tr>
+                                <tr>
+                                    <th>Resultado Fin de Orden</th>
+                                    <td id="fin_orden_resultado">--</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Datos crudos para depuración -->
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        Datos Crudos (JSON)
+                    </div>
+                    <div class="card-body">
+                        <pre id="rawData" class="bg-light p-3">--</pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Mapeo de valores a descripciones
+        const modoDescriptions = {
+            0: 'AUTOMÁTICO',
+            1: 'SEMIAUTOMÁTICO',
+            2: 'MANUAL'
+        };
+
+        const tipoOrdenDescriptions = {
+            0: 'NINGUNA',
+            1: 'DEPÓSITO',
+            2: 'EXTRACCIÓN'
+        };
+
+        const finOrdenEstadoDescriptions = {
+            0: 'NINGUNO',
+            1: 'EN PROCESO',
+            2: 'FIN DE ORDEN',
+            3: 'ERROR'
+        };
+
+        const finOrdenResultadoDescriptions = {
+            0: 'NINGUNO',
+            1: 'OK DEPÓSITO',
+            2: 'OK EXTRACCIÓN',
+            3: 'ERROR'
+        };
+
+        // Función para actualizar la interfaz con los datos de TLV1
+        function updateUI(data) {
+            if (!data || !data.data || data.data.length === 0) {
+                console.error('No hay datos disponibles');
+                document.getElementById('rawData').textContent = 'No hay datos disponibles';
+                return;
+            }
+
+            const tlv1 = data.data[0];
+            
+            // Actualizar estado
+            document.getElementById('modo').textContent = `${tlv1.modo} - ${modoDescriptions[tlv1.modo] || 'Desconocido'}`;
+            
+            const ocupacionIndicator = document.getElementById('ocupacion-indicator');
+            ocupacionIndicator.className = 'status-indicator ' + (tlv1.ocupacion ? 'status-on' : 'status-off');
+            document.getElementById('ocupacion').textContent = tlv1.ocupacion ? 'OCUPADO' : 'LIBRE';
+            
+            const averiaIndicator = document.getElementById('averia-indicator');
+            averiaIndicator.className = 'status-indicator ' + (tlv1.averia ? 'status-on' : 'status-off');
+            document.getElementById('averia').textContent = tlv1.averia ? 'AVERÍA' : 'OK';
+            
+            // Actualizar coordenadas
+            document.getElementById('coord_x').textContent = tlv1.coord_x;
+            document.getElementById('coord_y').textContent = tlv1.coord_y;
+            document.getElementById('coord_z').textContent = tlv1.coord_z;
+            document.getElementById('matricula').textContent = tlv1.matricula;
+            document.getElementById('pasillo').textContent = tlv1.pasillo;
+            
+            // Actualizar orden
+            document.getElementById('tipo_orden').textContent = `${tlv1.tipo_orden} - ${tipoOrdenDescriptions[tlv1.tipo_orden] || 'Desconocido'}`;
+            document.getElementById('fin_orden_estado').textContent = `${tlv1.fin_orden_estado} - ${finOrdenEstadoDescriptions[tlv1.fin_orden_estado] || 'Desconocido'}`;
+            document.getElementById('fin_orden_resultado').textContent = `${tlv1.fin_orden_resultado} - ${finOrdenResultadoDescriptions[tlv1.fin_orden_resultado] || 'Desconocido'}`;
+            
+            // Actualizar datos crudos
+            document.getElementById('rawData').textContent = JSON.stringify(tlv1, null, 2);
+            
+            // Actualizar timestamp
+            document.getElementById('lastUpdate').textContent = `Última actualización: ${new Date().toLocaleString()}`;
+        }
+
+        // Función para cargar los datos de TLV1
+        function loadTLV1Data() {
+            fetch('/api/data/tlv1', { cache: 'no-store' })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Error HTTP: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    updateUI(data);
+                })
+                .catch(error => {
+                    console.error('Error al cargar datos:', error);
+                    document.getElementById('rawData').textContent = `Error al cargar datos: ${error.message}`;
+                });
+        }
+
+        // Cargar datos al iniciar la página
+        document.addEventListener('DOMContentLoaded', () => {
+            loadTLV1Data();
+            
+            // Configurar actualización periódica (cada 5 segundos)
+            setInterval(loadTLV1Data, 5000);
+            
+            // Configurar botón de actualización manual
+            document.getElementById('refreshBtn').addEventListener('click', loadTLV1Data);
+        });
+    </script>
+</body>
+</html>
