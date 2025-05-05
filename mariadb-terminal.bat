@@ -1,0 +1,3 @@
+@echo off
+echo Conectando a MariaDB (operator_insight)...
+C:\Users\ASG\Downloads\mariadb-11.7.2-winx64\bin\mysql.exe -u ai -p0260 operator_insight
