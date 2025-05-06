@@ -75,10 +75,10 @@ class PTMariaDBController {
           
           // Añadir variables para leer (las que coinciden con los campos de PT_Status)
           conn.addItems([
-            'DB110,DBB30', // ocupacion
-            'DB110,DBB31', // estado
-            'DB110,DBB32', // situacion
-            'DB110,DBB33'  // posicion
+            'DB110,B30', // ocupacion
+            'DB110,B31', // estado
+            'DB110,B32', // situacion
+            'DB110,B33'  // posicion
           ]);
           
           // Leer todas las variables
@@ -93,6 +93,15 @@ class PTMariaDBController {
               reject(err);
               return;
             }
+            
+            // Mostrar los valores crudos exactos que se leen del PLC
+            console.log('\n==== VALORES CRUDOS LEÍDOS DEL PLC (DB110) ====');
+            console.log(JSON.stringify(values, null, 2));
+            console.log('DB110,DBB30 (ocupacion):', values['DB110,DBB30'], typeof values['DB110,DBB30']);
+            console.log('DB110,DBB31 (estado):', values['DB110,DBB31'], typeof values['DB110,DBB31']);
+            console.log('DB110,DBB32 (situacion):', values['DB110,DBB32'], typeof values['DB110,DBB32']);
+            console.log('DB110,DBB33 (posicion):', values['DB110,DBB33'], typeof values['DB110,DBB33']);
+            console.log('===============================================\n');
             
             // Verificar si los valores del PLC son válidos
             const hasValidValues = Object.values(values).some(value => 
@@ -120,10 +129,10 @@ class PTMariaDBController {
    */
   convertPLCDataToDBFormat(plcData) {
     return {
-      ocupacion: plcData['DB110,DBB30'] !== undefined ? plcData['DB110,DBB30'] : 0,
-      estado: plcData['DB110,DBB31'] !== undefined ? plcData['DB110,DBB31'] : 0,
-      situacion: plcData['DB110,DBB32'] !== undefined ? plcData['DB110,DBB32'] : 0,
-      posicion: plcData['DB110,DBB33'] !== undefined ? plcData['DB110,DBB33'] : 1
+      ocupacion: plcData['DB110,B30'] !== undefined ? plcData['DB110,B30'] : 0,
+      estado: plcData['DB110,B31'] !== undefined ? plcData['DB110,B31'] : 0,
+      situacion: plcData['DB110,B32'] !== undefined ? plcData['DB110,B32'] : 0,
+      posicion: plcData['DB110,B33'] !== undefined ? plcData['DB110,B33'] : 1
     };
   }
   
@@ -134,6 +143,21 @@ class PTMariaDBController {
    */
   async saveToDatabase(data) {
     try {
+      console.log('Intentando guardar datos en PT_Status:', data);
+      
+      // Verificar que los datos sean válidos
+      if (data === null || data === undefined) {
+        console.error('Error: Los datos a guardar son nulos o indefinidos');
+        return;
+      }
+      
+      // Verificar que los campos necesarios existan
+      if (data.ocupacion === undefined || data.estado === undefined || 
+          data.situacion === undefined || data.posicion === undefined) {
+        console.error('Error: Faltan campos requeridos en los datos:', data);
+        return;
+      }
+      
       const sql = `
         INSERT INTO PT_Status 
         (ocupacion, estado, situacion, posicion)
@@ -147,9 +171,14 @@ class PTMariaDBController {
         data.posicion
       ];
       
-      await query(sql, params);
+      console.log('Ejecutando consulta SQL:', sql);
+      console.log('Parámetros:', params);
+      
+      const result = await query(sql, params);
+      console.log('Resultado de la inserción:', result);
       logger.info('Datos guardados correctamente en la tabla PT_Status');
     } catch (error) {
+      console.error('Error detallado al guardar datos en PT_Status:', error);
       logger.error('Error al guardar datos en la tabla PT_Status:', error);
       throw error;
     }

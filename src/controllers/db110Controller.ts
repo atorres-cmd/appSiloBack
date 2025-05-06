@@ -49,7 +49,7 @@ export class DB110Controller {
             }
 
             // Añadir variables para leer - Específicas del Puente Transferidor
-            conn.addItems(['DB110,DBB30', 'DB110,DBB31', 'DB110,DBB32', 'DB110,DBB33']);
+            conn.addItems(['DB110,B30', 'DB110,B31', 'DB110,B32', 'DB110,B33']);
 
             // Leer todas las variables
             conn.readAllItems((err: any, values: Record<string, any>) => {
