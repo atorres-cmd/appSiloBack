@@ -10,8 +10,12 @@ import PLCService from './services/plcService';
 import SimulationService from './services/simulationService';
 import ComponentController from './controllers/componentController';
 import { DB101Controller } from './controllers/db101Controller';
+import { DB102Controller } from './controllers/db102Controller';
+import { DB110Controller } from './controllers/db110Controller';
 import createComponentRoutes from './routes/componentRoutes';
 import createDB101Routes from './routes/db101Routes';
+import createDB102Routes from './routes/db102Routes';
+import createDB110Routes from './routes/db110Routes';
 import createDataRoutes from './routes/dataRoutes';
 import { plcConfig, plcVariables } from './config/plcConfig';
 import { initializeDatabase, AppDataSource } from './config/database';
@@ -99,9 +103,15 @@ if (service.connect) {
 // Crear controladores y rutas
 const componentController = new ComponentController(service);
 const db101Controller = new DB101Controller(service);
+const db102Controller = new DB102Controller(service);
+const db110Controller = new DB110Controller(service);
 
 app.use('/api/components', createComponentRoutes(componentController));
 app.use('/api/plc/db101', createDB101Routes(db101Controller));
+// @ts-ignore - Ignorar error de tipo para DB102Routes
+app.use('/api/plc/db102', createDB102Routes(db102Controller));
+// Rutas para DB110 (Puente Transferidor)
+app.use('/api/plc/db110', createDB110Routes(db110Controller));
 
 // Ruta de estado
 app.get('/api/status', (req, res) => {

@@ -2,7 +2,9 @@ const express = require('express');
 const { initializeDatabase } = require('./db/init-db');
 const componentRoutes = require('./routes/componentRoutes');
 const alarmRoutes = require('./routes/alarmRoutes');
+const ptRoutes = require('./routes/ptRoutes');
 const { testConnection } = require('./db/mariadb-config');
+const { logger } = require('./utils/logger');
 
 /**
  * Función para integrar las rutas de MariaDB en la aplicación Express existente
@@ -20,6 +22,7 @@ function integrateMariaDB(app) {
         // Montar las rutas de la API en un prefijo separado para no interferir con las rutas existentes
         app.use('/api/mariadb/components', componentRoutes);
         app.use('/api/mariadb/alarms', alarmRoutes);
+        app.use('/api/pt', ptRoutes);
         
         // Ruta para verificar el estado de la conexión a MariaDB
         app.get('/api/mariadb/status', async (req, res) => {
@@ -49,6 +52,9 @@ function integrateMariaDB(app) {
               { method: 'GET', path: '/api/mariadb/components/:id', description: 'Obtener un componente por ID' },
               { method: 'GET', path: '/api/mariadb/components/type/:type', description: 'Obtener componentes por tipo' },
               { method: 'GET', path: '/api/mariadb/alarms', description: 'Obtener todas las alarmas' },
+              { method: 'GET', path: '/api/pt', description: 'Obtener el estado actual del Puente Transferidor (PT)' },
+              { method: 'POST', path: '/api/pt/sync', description: 'Sincronizar datos del Puente Transferidor (PT) desde el PLC' },
+              { method: 'GET', path: '/api/pt/plc', description: 'Obtener datos del Puente Transferidor (PT) directamente desde el PLC' },
               { method: 'GET', path: '/api/mariadb/alarms/component/:componentId', description: 'Obtener alarmas por componente' },
               { method: 'GET', path: '/api/mariadb/alarms/type/:type', description: 'Obtener alarmas por tipo' }
             ],
