@@ -158,25 +158,54 @@ class PTMariaDBController {
         return;
       }
       
-      const sql = `
-        INSERT INTO PT_Status 
-        (ocupacion, estado, situacion, posicion)
-        VALUES (?, ?, ?, ?)
-      `;
+      // Verificar si ya existe al menos una fila en la tabla
+      const checkResult = await query('SELECT COUNT(*) as count FROM PT_Status');
+      const count = checkResult[0].count || 0;
       
-      const params = [
-        data.ocupacion,
-        data.estado,
-        data.situacion,
-        data.posicion
-      ];
-      
-      console.log('Ejecutando consulta SQL:', sql);
-      console.log('Parámetros:', params);
-      
-      const result = await query(sql, params);
-      console.log('Resultado de la inserción:', result);
-      logger.info('Datos guardados correctamente en la tabla PT_Status');
+      if (count === 0) {
+        // Si no hay datos, insertamos la primera fila con id=1
+        const insertSql = `
+          INSERT INTO PT_Status 
+          (id, ocupacion, estado, situacion, posicion)
+          VALUES (1, ?, ?, ?, ?)
+        `;
+        
+        const insertParams = [
+          data.ocupacion,
+          data.estado,
+          data.situacion,
+          data.posicion
+        ];
+        
+        console.log('Ejecutando consulta de inserción:', insertSql);
+        console.log('Parámetros:', insertParams);
+        
+        const insertResult = await query(insertSql, insertParams);
+        console.log('Resultado de la inserción:', insertResult);
+        logger.info('Primera fila insertada en la tabla PT_Status');
+      } else {
+        // Si ya hay datos, actualizamos la primera fila (id=1)
+        const updateSql = `
+          UPDATE PT_Status 
+          SET ocupacion = ?, estado = ?, situacion = ?, posicion = ?, 
+              timestamp = CURRENT_TIMESTAMP
+          WHERE id = 1
+        `;
+        
+        const updateParams = [
+          data.ocupacion,
+          data.estado,
+          data.situacion,
+          data.posicion
+        ];
+        
+        console.log('Ejecutando consulta de actualización:', updateSql);
+        console.log('Parámetros:', updateParams);
+        
+        const updateResult = await query(updateSql, updateParams);
+        console.log('Resultado de la actualización:', updateResult);
+        logger.info('Datos actualizados en la fila 1 de la tabla PT_Status');
+      }
     } catch (error) {
       console.error('Error detallado al guardar datos en PT_Status:', error);
       logger.error('Error al guardar datos en la tabla PT_Status:', error);
@@ -244,12 +273,12 @@ class PTMariaDBController {
       
       logger.info(`Verificación de datos en PT_Status: ${count} registros encontrados`);
       
-      // Si no hay datos, insertar datos iniciales
+      // Si no hay datos, insertar datos iniciales con id=1
       if (count === 0) {
         await query(`
           INSERT INTO PT_Status 
-          (ocupacion, estado, situacion, posicion)
-          VALUES (0, 0, 0, 1)
+          (id, ocupacion, estado, situacion, posicion)
+          VALUES (1, 0, 0, 0, 1)
         `);
         logger.info('Datos iniciales para PT_Status insertados correctamente');
       }
@@ -268,14 +297,33 @@ class PTMariaDBController {
    */
   async getPTStatus(req, res) {
     try {
-      const [rows] = await query('SELECT * FROM PT_Status ORDER BY id DESC LIMIT 1');
+      console.log('Ejecutando getPTStatus para obtener datos del PT desde MariaDB...');
+      
+      // Obtener la fila con id=1 de la tabla PT_Status (que es la que siempre actualizamos)
+      const result = await query('SELECT * FROM PT_Status WHERE id = 1');
+      
+      // Imprimir el resultado completo para depuración
+      console.log('Resultado completo de la consulta PT_Status:', JSON.stringify(result, null, 2));
+      
+      // Manejar diferentes formatos de resultado
+      let rows = [];
+      if (Array.isArray(result)) {
+        if (result.length > 0) {
+          rows = result;
+        }
+      } else if (result && Array.isArray(result.rows)) {
+        rows = result.rows;
+      }
+      
+      console.log(`Se encontraron ${rows.length} registros en PT_Status`);
       
       if (rows.length > 0) {
-        res.json({
-          success: true,
-          data: rows[0]
-        });
+        const ptData = rows[0];
+        console.log('Datos del PT encontrados:', JSON.stringify(ptData, null, 2));
+        
+        res.json(ptData);
       } else {
+        console.log('No se encontraron datos del PT en la base de datos');
         res.status(404).json({
           success: false,
           message: 'No se encontraron datos del Puente Transferidor'
@@ -283,6 +331,7 @@ class PTMariaDBController {
       }
     } catch (error) {
       logger.error('Error al obtener datos del Puente Transferidor desde MariaDB:', error);
+      console.error('Error completo:', error);
       res.status(500).json({
         success: false,
         message: 'Error al obtener datos del Puente Transferidor',

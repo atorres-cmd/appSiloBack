@@ -107,28 +107,62 @@ class TLV2MariaDBController {
 
   async saveToDatabase(data) {
     try {
-      const sql = `
-        INSERT INTO TLV2_Status 
-        (modo, ocupacion, averia, matricula, pasillo_actual, x_actual, y_actual, z_actual, estadoFinOrden, resultadoFinOrden)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `;
+      // Primero verificamos si existe la tabla y si tiene al menos una fila
+      const checkResult = await query('SELECT COUNT(*) as count FROM TLV2_Status');
+      const count = checkResult[0].count || 0;
       
-      const params = [
-        data.modo,
-        data.ocupacion,
-        data.averia,
-        data.matricula,
-        data.pasillo_actual,
-        data.x_actual,
-        data.y_actual,
-        data.z_actual,
-        data.estadoFinOrden,
-        data.resultadoFinOrden
-      ];
-      
-      const result = await query(sql, params);
-      console.log('Datos guardados en la base de datos:', result);
-      return result;
+      if (count === 0) {
+        // Si no hay datos, insertamos la primera fila
+        const insertSql = `
+          INSERT INTO TLV2_Status 
+          (id, modo, ocupacion, averia, matricula, pasillo_actual, x_actual, y_actual, z_actual, estadoFinOrden, resultadoFinOrden)
+          VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `;
+        
+        const insertParams = [
+          data.modo,
+          data.ocupacion,
+          data.averia,
+          data.matricula,
+          data.pasillo_actual,
+          data.x_actual,
+          data.y_actual,
+          data.z_actual,
+          data.estadoFinOrden,
+          data.resultadoFinOrden
+        ];
+        
+        const result = await query(insertSql, insertParams);
+        console.log('Primera fila insertada en la tabla TLV2_Status:', result);
+        return result;
+      } else {
+        // Si ya hay datos, actualizamos la primera fila (id=1)
+        const updateSql = `
+          UPDATE TLV2_Status 
+          SET modo = ?, ocupacion = ?, averia = ?, matricula = ?, 
+              pasillo_actual = ?, x_actual = ?, y_actual = ?, z_actual = ?, 
+              estadoFinOrden = ?, resultadoFinOrden = ?, 
+              timestamp = CURRENT_TIMESTAMP
+          WHERE id = 1
+        `;
+        
+        const updateParams = [
+          data.modo,
+          data.ocupacion,
+          data.averia,
+          data.matricula,
+          data.pasillo_actual,
+          data.x_actual,
+          data.y_actual,
+          data.z_actual,
+          data.estadoFinOrden,
+          data.resultadoFinOrden
+        ];
+        
+        const result = await query(updateSql, updateParams);
+        console.log('Datos actualizados en la fila 1 de la tabla TLV2_Status:', result);
+        return result;
+      }
     } catch (error) {
       console.error('Error al guardar datos en la base de datos:', error);
       throw error;
@@ -206,22 +240,25 @@ class TLV2MariaDBController {
 
   async getLatestData() {
     try {
-      const sql = 'SELECT * FROM TLV2_Status ORDER BY timestamp DESC LIMIT 1';
+      // Siempre obtenemos la fila con id=1, que es la que actualizamos
+      const sql = 'SELECT * FROM TLV2_Status WHERE id = 1';
       const result = await query(sql);
       return result[0] || null;
     } catch (error) {
-      console.error('Error al obtener los últimos datos:', error);
+      console.error('Error al obtener los datos actuales:', error);
       throw error;
     }
   }
 
   async getHistoricalData(limit = 10) {
     try {
-      const sql = 'SELECT * FROM TLV2_Status ORDER BY timestamp DESC LIMIT ?';
-      const result = await query(sql, [limit]);
-      return result;
+      // Como ahora solo tenemos una fila (id=1), simplemente la devolvemos
+      const sql = 'SELECT * FROM TLV2_Status WHERE id = 1';
+      const result = await query(sql);
+      // Devolvemos un array con el único elemento para mantener la compatibilidad
+      return result.length > 0 ? [result[0]] : [];
     } catch (error) {
-      console.error('Error al obtener datos históricos:', error);
+      console.error('Error al obtener datos actuales:', error);
       throw error;
     }
   }

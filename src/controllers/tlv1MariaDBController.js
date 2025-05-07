@@ -146,27 +146,60 @@ class TLV1MariaDBController {
    */
   async saveToDatabase(data) {
     try {
-      const sql = `
-        INSERT INTO TLV1_Status 
-        (modo, ocupacion, averia, matricula, pasillo_actual, x_actual, y_actual, z_actual, estadoFinOrden, resultadoFinOrden)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `;
+      // Primero verificamos si existe la tabla y si tiene al menos una fila
+      const checkResult = await query('SELECT COUNT(*) as count FROM TLV1_Status');
+      const count = checkResult[0].count || 0;
       
-      const params = [
-        data.modo,
-        data.ocupacion,
-        data.averia,
-        data.matricula,
-        data.pasillo_actual,
-        data.x_actual,
-        data.y_actual,
-        data.z_actual,
-        data.estadoFinOrden,
-        data.resultadoFinOrden
-      ];
-      
-      await query(sql, params);
-      logger.info('Datos guardados correctamente en la tabla TLV1_Status');
+      if (count === 0) {
+        // Si no hay datos, insertamos la primera fila
+        const insertSql = `
+          INSERT INTO TLV1_Status 
+          (id, modo, ocupacion, averia, matricula, pasillo_actual, x_actual, y_actual, z_actual, estadoFinOrden, resultadoFinOrden)
+          VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `;
+        
+        const insertParams = [
+          data.modo,
+          data.ocupacion,
+          data.averia,
+          data.matricula,
+          data.pasillo_actual,
+          data.x_actual,
+          data.y_actual,
+          data.z_actual,
+          data.estadoFinOrden,
+          data.resultadoFinOrden
+        ];
+        
+        await query(insertSql, insertParams);
+        logger.info('Primera fila insertada en la tabla TLV1_Status');
+      } else {
+        // Si ya hay datos, actualizamos la primera fila (id=1)
+        const updateSql = `
+          UPDATE TLV1_Status 
+          SET modo = ?, ocupacion = ?, averia = ?, matricula = ?, 
+              pasillo_actual = ?, x_actual = ?, y_actual = ?, z_actual = ?, 
+              estadoFinOrden = ?, resultadoFinOrden = ?, 
+              timestamp = CURRENT_TIMESTAMP
+          WHERE id = 1
+        `;
+        
+        const updateParams = [
+          data.modo,
+          data.ocupacion,
+          data.averia,
+          data.matricula,
+          data.pasillo_actual,
+          data.x_actual,
+          data.y_actual,
+          data.z_actual,
+          data.estadoFinOrden,
+          data.resultadoFinOrden
+        ];
+        
+        await query(updateSql, updateParams);
+        logger.info('Datos actualizados en la fila 1 de la tabla TLV1_Status');
+      }
     } catch (error) {
       logger.error('Error al guardar datos en la tabla TLV1_Status:', error);
       throw error;
