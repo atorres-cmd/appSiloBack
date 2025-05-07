@@ -32,7 +32,10 @@ const server = http.createServer(app);
 
 // Configurar CORS
 const corsOptions = {
-  origin: process.env.FRONTEND_URL || 'http://localhost:8080',
+  origin: [
+    'http://localhost:8080',
+    /^http:\/\/192\.168\.131\.\d+:8080$/  // Permite cualquier IP en el rango 192.168.131.xxx:8080
+  ],
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true
 };
