@@ -31,7 +31,9 @@ const db102Controller = new DB102Controller(mockPLCService);
 const router = express.Router();
 
 // Definir rutas
-router.get('/', db102Controller.getAllValues);
-router.post('/write', db102Controller.writeValue);
+router.get('/', (req, res) => db102Controller.getAllValues(req, res));
+router.post('/write', (req, res) => db102Controller.writeValue(req, res));
 
-export default router;
+// Exportar una función que crea y devuelve el router para mantener consistencia con los otros archivos de rutas
+const createDB102Routes = () => router;
+export default createDB102Routes;

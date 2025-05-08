@@ -111,8 +111,8 @@ const db110Controller = new DB110Controller(service);
 
 app.use('/api/components', createComponentRoutes(componentController));
 app.use('/api/plc/db101', createDB101Routes(db101Controller));
-// @ts-ignore - Ignorar error de tipo para DB102Routes
-app.use('/api/plc/db102', createDB102Routes(db102Controller));
+// DB102Routes ahora devuelve una función que crea el router
+app.use('/api/plc/db102', createDB102Routes());
 // Rutas para DB110 (Puente Transferidor)
 app.use('/api/plc/db110', createDB110Routes(db110Controller));
 
