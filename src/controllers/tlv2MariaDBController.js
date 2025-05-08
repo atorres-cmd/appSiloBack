@@ -1,22 +1,17 @@
 const { query } = require('../db/mariadb-config');
+const { logger } = require('../utils/logger');
 const nodes7 = require('nodes7');
 require('dotenv').config();
 
 class TLV2MariaDBController {
   constructor() {
-    this.conn = new nodes7();
-    this.isConnected = false;
-    this.isReading = false;
     this.syncInterval = null;
     this.syncIntervalTime = 30000; // 30 segundos por defecto
-    this.plcIp = process.env.PLC_IP || '10.21.178.100';
-    this.plcRack = parseInt(process.env.PLC_RACK || '0');
-    this.plcSlot = parseInt(process.env.PLC_SLOT || '3');
     this.variables = {
       'DB102,B0': 'modo',
       'DB102,B1': 'ocupacion',
       'DB102,B2': 'averia',
-      'DB102,W32': 'matricula', // Usando W32 para la matrícula, igual que en DB101
+      'DB102,W32': 'matricula', // Usando W32 para la matrícula
       'DB102,B18': 'pasillo_actual',
       'DB102,W10': 'x_actual',
       'DB102,W12': 'y_actual',
@@ -26,68 +21,79 @@ class TLV2MariaDBController {
     };
   }
 
-  async connectToPLC() {
-    return new Promise((resolve, reject) => {
-      if (this.isConnected) {
-        console.log('Ya conectado al PLC');
-        resolve(true);
-        return;
-      }
 
-      const connectionParams = {
-        host: this.plcIp,
-        port: 102,
-        rack: this.plcRack,
-        slot: this.plcSlot
-      };
 
-      this.conn.initiateConnection(connectionParams, (err) => {
-        if (err) {
-          console.error('Error al conectar con el PLC:', err);
-          this.isConnected = false;
-          reject(err);
-          return;
-        }
-
-        console.log('Conexión establecida con el PLC');
-        this.isConnected = true;
-
-        // Añadir variables a leer
-        const varsToRead = Object.keys(this.variables);
-        this.conn.addItems(varsToRead);
-
-        resolve(true);
-      });
-    });
-  }
-
+  /**
+   * Lee los datos del PLC utilizando nodes7
+   * @returns {Promise<Object>} Datos leídos del PLC
+   */
   async readPLCData() {
-    return new Promise((resolve, reject) => {
-      if (!this.isConnected) {
-        reject(new Error('No hay conexión con el PLC'));
-        return;
-      }
-
-      if (this.isReading) {
-        reject(new Error('Ya se está leyendo datos del PLC'));
-        return;
-      }
-
-      this.isReading = true;
-
-      this.conn.readAllItems((err, data) => {
-        this.isReading = false;
-
-        if (err) {
-          console.error('Error al leer datos del PLC:', err);
-          reject(err);
-          return;
-        }
-
-        console.log('Datos leídos del PLC:', data);
-        resolve(data);
+    const conn = new nodes7();
+    
+    // Configuración de conexión al PLC
+    const connectionParams = {
+      host: process.env.PLC_IP || '10.21.178.100',
+      port: 102,
+      rack: parseInt(process.env.PLC_RACK || '0'),
+      slot: parseInt(process.env.PLC_SLOT || '3'),
+      timeout: 5000
+    };
+    
+    try {
+      // Crear una promesa para manejar la conexión asíncrona
+      return await new Promise((resolve, reject) => {
+        // Conectar al PLC
+        conn.initiateConnection(connectionParams, (err) => {
+          if (err) {
+            logger.error('Error al conectar con el PLC para TLV2:', err);
+            reject(err);
+            return;
+          }
+          
+          // Añadir variables para leer
+          conn.addItems([
+            'DB102,B0',   // modo
+            'DB102,B1',   // ocupacion
+            'DB102,B2',   // averia
+            'DB102,W32',  // matricula
+            'DB102,B18',  // pasillo_actual
+            'DB102,W10',  // x_actual
+            'DB102,W12',  // y_actual
+            'DB102,W14',  // z_actual
+            'DB102,B40',  // estadoFinOrden
+            'DB102,B41'   // resultadoFinOrden
+          ]);
+          
+          // Leer todas las variables
+          conn.readAllItems((err, values) => {
+            // Desconectar del PLC después de leer
+            conn.dropConnection(() => {
+              logger.info('Desconectado del PLC después de leer valores de TLV2');
+            });
+            
+            if (err) {
+              logger.error('Error al leer valores del PLC para TLV2:', err);
+              reject(err);
+              return;
+            }
+            
+            // Verificar si los valores del PLC son válidos
+            const hasValidValues = Object.values(values).some(value => 
+              value !== null && value !== undefined);
+            
+            if (hasValidValues) {
+              logger.info('Valores leídos correctamente del PLC para TLV2');
+              resolve(values);
+            } else {
+              reject(new Error('No se obtuvieron valores válidos del PLC para TLV2'));
+            }
+          });
+        });
       });
-    });
+    } catch (error) {
+      logger.error('Error al leer datos del PLC para TLV2:', error);
+      return null;
+    }
   }
 
   convertPLCDataToDBFormat(plcData) {
@@ -171,13 +177,18 @@ class TLV2MariaDBController {
 
   async syncPLCToDatabase() {
     try {
-      await this.connectToPLC();
       const plcData = await this.readPLCData();
+      
+      if (!plcData) {
+        logger.error('No se pudieron leer los datos del PLC para TLV2');
+        return { success: false, message: 'No se pudieron leer los datos del PLC para TLV2' };
+      }
+      
       const dbData = this.convertPLCDataToDBFormat(plcData);
       await this.saveToDatabase(dbData);
-      return { success: true, message: 'Sincronización completada' };
+      return { success: true, message: 'Sincronización completada para TLV2' };
     } catch (error) {
-      console.error('Error en la sincronización:', error);
+      logger.error('Error en la sincronización de TLV2:', error);
       return { success: false, message: error.message };
     }
   }
@@ -191,18 +202,18 @@ class TLV2MariaDBController {
       clearInterval(this.syncInterval);
     }
 
-    this.syncInterval = setInterval(() => {
-      this.syncPLCToDatabase()
-        .then(result => {
-          console.log('Auto-sincronización completada:', result);
-        })
-        .catch(error => {
-          console.error('Error en auto-sincronización:', error);
-        });
+    this.syncInterval = setInterval(async () => {
+      try {
+        logger.info(`Ejecutando sincronización programada de datos PLC a MariaDB para TLV2...`);
+        const result = await this.syncPLCToDatabase();
+        logger.info('Auto-sincronización de TLV2 completada:', result);
+      } catch (error) {
+        logger.error('Error en auto-sincronización de TLV2:', error);
+      }
     }, this.syncIntervalTime);
 
-    console.log(`Auto-sincronización iniciada con intervalo de ${this.syncIntervalTime}ms`);
-    return { success: true, message: `Auto-sincronización iniciada con intervalo de ${this.syncIntervalTime}ms` };
+    logger.info(`Auto-sincronización de TLV2 iniciada con intervalo de ${this.syncIntervalTime}ms`);
+    return { success: true, message: `Auto-sincronización de TLV2 iniciada con intervalo de ${this.syncIntervalTime}ms` };
   }
 
   stopAutoSync() {
@@ -219,23 +230,13 @@ class TLV2MariaDBController {
     return {
       active: this.syncInterval !== null,
       intervalTime: this.syncIntervalTime,
-      plcConnected: this.isConnected
+      plcConnected: true // Siempre devolvemos true ya que ahora creamos una nueva conexión cada vez
     };
   }
 
+  // Ya no necesitamos este método ya que desconectamos después de cada lectura
   async disconnectFromPLC() {
-    return new Promise((resolve) => {
-      if (!this.isConnected) {
-        resolve({ success: true, message: 'No hay conexión activa con el PLC' });
-        return;
-      }
-
-      this.conn.dropConnection(() => {
-        this.isConnected = false;
-        console.log('Desconectado del PLC');
-        resolve({ success: true, message: 'Desconectado del PLC' });
-      });
-    });
+    return { success: true, message: 'No hay conexión persistente que desconectar' };
   }
 
   async getLatestData() {
